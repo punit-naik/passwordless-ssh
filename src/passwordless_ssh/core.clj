@@ -17,7 +17,7 @@
 (def ^:private ssh-connect-timeout-ms 10000)
 
 
-(defn- current-os-user
+(defn current-os-user
   "Returns the current OS user name for the running JVM process."
   []
   (System/getProperty "user.name"))
@@ -29,13 +29,13 @@
   (contains? #{"localhost" "127.0.0.1"} (:ip machine)))
 
 
-(defn- build-machine-id
+(defn build-machine-id
   "Builds a human-readable SSH identifier like user@host for logging and diagnostics."
   [{:keys [ssh-user ip]}]
   (str ssh-user "@" ip))
 
 
-(defn- non-blank-string
+(defn non-blank-string
   "Returns a trimmed string when the input contains non-whitespace characters."
   [value]
   (when (some? value)
@@ -44,7 +44,7 @@
         trimmed))))
 
 
-(defn- private-key-path
+(defn private-key-path
   "Normalizes and validates a private key path, returning it only when readable."
   [secret]
   (when-let [candidate (non-blank-string secret)]
@@ -54,13 +54,13 @@
         candidate))))
 
 
-(defn- shell-quote
+(defn shell-quote
   "Safely single-quotes a string for inclusion in a shell command."
   [s]
   (str "'" (str/replace (str s) "'" "'\\''") "'"))
 
 
-(defn- stream->string
+(defn stream->string
   "Reads an input stream fully into a UTF-8 string."
   [^InputStream stream]
   (let [buffer (byte-array 4096)
@@ -112,7 +112,7 @@
         {:error (str "Unsupported auth-type: " auth-type)}))))
 
 
-(defn- build-session
+(defn build-session
   "Creates and configures a JSch SSH session for the given machine."
   [{:keys [ssh-user ip auth-type auth-secret]}]
   (let [password (non-blank-string auth-secret)
@@ -192,13 +192,13 @@
             {:exit 255 :out "" :err (.getMessage ex)}))))))
 
 
-(defn- passwordless-group-key
+(defn passwordless-group-key
   "Builds the grouping key used to cluster machines by compatible SSH auth details."
   [{:keys [ssh-user auth-type auth-secret]}]
   [ssh-user auth-type (some-> auth-secret str/trim not-empty)])
 
 
-(defn- machine-sort-key
+(defn machine-sort-key
   "Builds a stable sort key for machine ordering, preferring explicit ids when present."
   [machine]
   [(boolean (:id machine))
@@ -209,7 +209,7 @@
    (:auth-type machine)])
 
 
-(defn- ensure-ssh-keypair!
+(defn ensure-ssh-keypair!
   "Ensures that the target machine has an RSA SSH keypair ready for mesh setup."
   [machine]
   (log/info "Ensuring SSH keypair exists" {:machine (select-keys machine [:hostname :ip :ssh-user])})
@@ -224,7 +224,7 @@
                       {:machine machine :result result})))))
 
 
-(defn- known-host-identifiers
+(defn known-host-identifiers
   "Returns the distinct hostname/IP values that should be added to known_hosts."
   [{:keys [hostname ip]}]
   (->> [hostname ip]
@@ -232,7 +232,7 @@
        distinct))
 
 
-(defn- known-host-authorization-command
+(defn known-host-authorization-command
   "Builds the shell command that adds a host entry to ~/.ssh/known_hosts when needed."
   [host]
   (let [quoted-host (shell-quote host)]
@@ -246,7 +246,7 @@
             quoted-host)))
 
 
-(defn- ensure-command-succeeded!
+(defn ensure-command-succeeded!
   "Throws an ex-info when a machine command exits with a non-zero status."
   [message machine context result]
   (when-not (zero? (:exit result))
@@ -256,7 +256,7 @@
                            :result result)))))
 
 
-(defn- authorize-known-host!
+(defn authorize-known-host!
   "Adds the target machine's hostname/IP SSH host keys to the source machine's known_hosts."
   [source-machine target-machine]
   (log/debug "Authorizing known host entries" {:source (select-keys source-machine [:hostname :ip :ssh-user])
@@ -271,7 +271,7 @@
         (known-host-identifiers target-machine)))
 
 
-(defn- read-public-key!
+(defn read-public-key!
   "Reads and returns the public key from the target machine's default SSH keypair."
   [machine]
   (log/debug "Reading public key from machine" {:machine (select-keys machine [:hostname :ip :ssh-user])})
@@ -286,7 +286,7 @@
     public-key))
 
 
-(defn- authorize-public-key!
+(defn authorize-public-key!
   "Appends a public key to the target machine's authorized_keys when it is not already present."
   [machine public-key]
   (log/debug "Authorizing public key on machine" {:machine (select-keys machine [:hostname :ip :ssh-user])})
@@ -327,7 +327,7 @@
     :ok))
 
 
-(defn- setup-passwordless-group!
+(defn setup-passwordless-group!
   "Validates and applies passwordless SSH setup for one grouped set of compatible machines."
   [machines]
   (let [{:keys [ssh-user auth-type]} (first machines)

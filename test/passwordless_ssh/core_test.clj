@@ -64,10 +64,10 @@
                                          " >/dev/null 2>&1"))]
       (is (zero? exit) err))
     (try
-      (let [session (#'ssh/build-session {:ssh-user "ubuntu"
-                                          :ip "10.0.0.11"
-                                          :auth-type "private-key"
-                                          :auth-secret (.getAbsolutePath private-key-file)})]
+      (let [session (ssh/build-session {:ssh-user "ubuntu"
+                                        :ip "10.0.0.11"
+                                        :auth-type "private-key"
+                                        :auth-secret (.getAbsolutePath private-key-file)})]
         (is (= "no" (.getConfig session "StrictHostKeyChecking")))
         (is (= "publickey,password,keyboard-interactive"
                (.getConfig session "PreferredAuthentications"))))
@@ -141,13 +141,13 @@
     (with-redefs [ssh/exec-remote-command (fn [_machine _cmd]
                                             (throw (ex-info "boom" {})))]
       (log/with-config (assoc log/*config* :appenders {})
-        (let [result (ssh/exec-machine {:ip "10.0.0.10"
-                                        :ssh-user "root"
-                                        :auth-type "password"
-                                        :auth-secret "pw"}
-                                       "hostname")]
-          (is (= 255 (:exit result)))
-          (is (= "boom" (:err result))))))))
+                       (let [result (ssh/exec-machine {:ip "10.0.0.10"
+                                                       :ssh-user "root"
+                                                       :auth-type "password"
+                                                       :auth-secret "pw"}
+                                                      "hostname")]
+                         (is (= 255 (:exit result)))
+                         (is (= "boom" (:err result))))))))
 
 
 (deftest setup-passwordless-mesh-groups-compatible-machines
@@ -242,32 +242,32 @@
     (with-redefs [ssh/exec-machine (fn [_machine _cmd] {:exit 1 :out "" :err "keygen failed"})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Unable to create/read SSH keypair on machine."
-            (#'ssh/ensure-ssh-keypair! {:ip "10.0.0.1"})))))
+            (ssh/ensure-ssh-keypair! {:ip "10.0.0.1"})))))
 
   (testing "authorize-known-host! throws when command fails"
     (with-redefs [ssh/exec-machine (fn [_machine _cmd] {:exit 1 :out "" :err "scan failed"})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Unable to authorize SSH known host on machine."
-            (#'ssh/authorize-known-host! {:ip "10.0.0.1"}
-                                         {:hostname "node-2" :ip "10.0.0.2"})))))
+            (ssh/authorize-known-host! {:ip "10.0.0.1"}
+                                       {:hostname "node-2" :ip "10.0.0.2"})))))
 
   (testing "read-public-key! throws on command failure"
     (with-redefs [ssh/exec-machine (fn [_machine _cmd] {:exit 1 :out "" :err "cat failed"})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Unable to read machine public key."
-            (#'ssh/read-public-key! {:ip "10.0.0.1"})))))
+            (ssh/read-public-key! {:ip "10.0.0.1"})))))
 
   (testing "read-public-key! throws when the key is empty"
     (with-redefs [ssh/exec-machine (fn [_machine _cmd] {:exit 0 :out "   " :err ""})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Machine public key is empty."
-            (#'ssh/read-public-key! {:ip "10.0.0.1"})))))
+            (ssh/read-public-key! {:ip "10.0.0.1"})))))
 
   (testing "authorize-public-key! throws when command fails"
     (with-redefs [ssh/exec-machine (fn [_machine _cmd] {:exit 1 :out "" :err "append failed"})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Unable to authorize SSH key on machine."
-            (#'ssh/authorize-public-key! {:ip "10.0.0.1"} "ssh-rsa AAA"))))))
+            (ssh/authorize-public-key! {:ip "10.0.0.1"} "ssh-rsa AAA"))))))
 
 
 (deftest setup-passwordless-group-captures-bootstrap-failures
@@ -275,17 +275,17 @@
   (with-redefs [ssh/setup-passwordless-group-via-ssh! (fn [_machines]
                                                         (throw (ex-info "group failed" {})))]
     (log/with-config (assoc log/*config* :appenders {})
-      (let [result (#'ssh/setup-passwordless-group!
-                     [{:ip "10.0.0.1" :ssh-user "ubuntu" :auth-type "password" :auth-secret "pw"}
-                      {:ip "10.0.0.2" :ssh-user "ubuntu" :auth-type "password" :auth-secret "pw"}])]
-        (is (false? (:applied result)))
-        (is (false? (:skipped result)))
-        (is (= "group failed" (:error result)))))))
+                     (let [result (ssh/setup-passwordless-group!
+                                    [{:ip "10.0.0.1" :ssh-user "ubuntu" :auth-type "password" :auth-secret "pw"}
+                                     {:ip "10.0.0.2" :ssh-user "ubuntu" :auth-type "password" :auth-secret "pw"}])]
+                       (is (false? (:applied result)))
+                       (is (false? (:skipped result)))
+                       (is (= "group failed" (:error result)))))))
 
 
 (deftest known-host-identifiers-includes-hostname-and-ip-once
   (log/info "Running known-host identifier unit test")
-  (let [known-host-identifiers #'ssh/known-host-identifiers]
+  (let [known-host-identifiers ssh/known-host-identifiers]
     (is (= ["node-1" "10.0.0.1"]
            (vec (known-host-identifiers {:hostname "node-1"
                                          :ip "10.0.0.1"}))))

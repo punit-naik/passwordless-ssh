@@ -8,7 +8,7 @@
 ## Coordinates
 
 ```clojure
-[org.clojars.punit-naik/passwordless-ssh "1.0.0"]
+[org.clojars.punit-naik/passwordless-ssh "1.0.1"]
 ```
 
 ## What It Does
@@ -73,6 +73,8 @@ If you want to operate on a single already-compatible group directly:
 ```clojure
 (pssh/setup-passwordless-group-via-ssh! machines)
 ```
+
+As of `1.0.1`, the lower-level helpers in `passwordless-ssh.core` are public too, so consumers can compose pieces like `build-session`, `exec-machine`, `known-host-identifiers`, `read-public-key!`, and `setup-passwordless-group!` directly.
 
 ## Notes
 

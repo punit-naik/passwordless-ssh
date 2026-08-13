@@ -1,4 +1,4 @@
-(defproject org.clojars.punit-naik/passwordless-ssh "1.0.0"
+(defproject org.clojars.punit-naik/passwordless-ssh "1.0.1"
   :description "Standalone passwordless SSH setup for groups of machines that can authenticate over SSH"
   :url "https://github.com/punit-naik/passwordless-ssh"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"

@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project uses semantic versioning.
 
+## [1.0.1] - 2026-08-13
+
+### Changed
+
+- Promoted all helper functions in `passwordless-ssh.core` from private to public so downstream consumers can reuse the lower-level SSH bootstrap building blocks directly.
+- Updated unit tests to call the promoted functions through the public namespace API instead of private var access.
+- Updated README dependency coordinates and API notes to reflect the expanded public surface.
+
 ## [1.0.0] - 2026-08-13
 
 Initial standalone release of `org.clojars.punit-naik/passwordless-ssh`.
