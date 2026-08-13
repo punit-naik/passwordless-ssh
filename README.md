@@ -1,6 +1,6 @@
 # passwordless-ssh
 
-[![CircleCI](https://circleci.com/gh/punit-naik/passwordless-ssh/tree/main.svg?style=svg)](https://circleci.com/gh/punit-naik/passwordless-ssh/tree/main)
+[![CircleCI](https://circleci.com/gh/punit-naik/passwordless-ssh/tree/master.svg?style=svg)](https://circleci.com/gh/punit-naik/passwordless-ssh/tree/master)
 [![Clojars Project](https://img.shields.io/clojars/v/org.clojars.punit-naik/passwordless-ssh.svg)](https://clojars.org/org.clojars.punit-naik/passwordless-ssh)
 
 `passwordless-ssh` is a small Clojure library for bootstrapping passwordless SSH across machines that can already be reached over SSH.
