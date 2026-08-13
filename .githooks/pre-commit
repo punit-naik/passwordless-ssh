@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+before_unstaged_hash="$(git diff -- src test | git hash-object --stdin)"
+mapfile -t staged_before < <(git diff --cached --name-only --diff-filter=ACMR -- src test)
+
+echo "[pre-commit] Running cljstyle fix on src/ and test/..."
+lein with-profile +dev trampoline run -m cljstyle.main fix src test
+
+if [ "${#staged_before[@]}" -gt 0 ]; then
+  git add -- "${staged_before[@]}"
+fi
+
+after_unstaged_hash="$(git diff -- src test | git hash-object --stdin)"
+if [ "$before_unstaged_hash" != "$after_unstaged_hash" ]; then
+  mapfile -t unstaged_after < <(git diff --name-only -- src test)
+  echo "[pre-commit] cljstyle modified additional files in src/test."
+  echo "[pre-commit] Review and stage these files, then re-run commit:"
+  printf "  - %s\n" "${unstaged_after[@]}"
+  exit 1
+fi

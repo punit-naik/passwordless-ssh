@@ -1,0 +1,1232 @@
+<html>
+ <head>
+   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <link rel="stylesheet" href="../coverage.css"/>  <title> passwordless_ssh/core.clj </title>
+ </head>
+ <body>
+<span class="covered" title="1 out of 1 forms covered">
+                001&nbsp;&nbsp;(ns&nbsp;passwordless-ssh.core
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                002&nbsp;&nbsp;&nbsp;&nbsp;(:require
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                003&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[clojure.java.io&nbsp;:as&nbsp;io]
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                004&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[clojure.java.shell&nbsp;:as&nbsp;shell]
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                005&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[clojure.string&nbsp;:as&nbsp;str]
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                006&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[taoensso.timbre&nbsp;:as&nbsp;log])
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                007&nbsp;&nbsp;&nbsp;&nbsp;(:import
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                008&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(com.jcraft.jsch
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                009&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ChannelExec
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                010&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;JSch
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                011&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Session)
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                012&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(java.io
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                013&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ByteArrayOutputStream
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                014&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;InputStream)))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                015&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                016&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                017&nbsp;&nbsp;(def&nbsp;^:private&nbsp;ssh-connect-timeout-ms&nbsp;10000)
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                018&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                019&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                020&nbsp;&nbsp;(defn-&nbsp;current-os-user
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                021&nbsp;&nbsp;&nbsp;&nbsp;&quot;Returns&nbsp;the&nbsp;current&nbsp;OS&nbsp;user&nbsp;name&nbsp;for&nbsp;the&nbsp;running&nbsp;JVM&nbsp;process.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                022&nbsp;&nbsp;&nbsp;&nbsp;[]
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                023&nbsp;&nbsp;&nbsp;&nbsp;(System&#x2F;getProperty&nbsp;&quot;user.name&quot;))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                024&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                025&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                026&nbsp;&nbsp;(defn&nbsp;localhost-machine?
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                027&nbsp;&nbsp;&nbsp;&nbsp;&quot;Returns&nbsp;true&nbsp;when&nbsp;the&nbsp;machine&nbsp;should&nbsp;be&nbsp;treated&nbsp;as&nbsp;the&nbsp;local&nbsp;host.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                028&nbsp;&nbsp;&nbsp;&nbsp;[machine]
+                </span><br/>
+<span class="covered" title="8 out of 8 forms covered">
+                029&nbsp;&nbsp;&nbsp;&nbsp;(contains?&nbsp;#{&quot;localhost&quot;&nbsp;&quot;127.0.0.1&quot;}&nbsp;(:ip&nbsp;machine)))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                030&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                031&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                032&nbsp;&nbsp;(defn-&nbsp;build-machine-id
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                033&nbsp;&nbsp;&nbsp;&nbsp;&quot;Builds&nbsp;a&nbsp;human-readable&nbsp;SSH&nbsp;identifier&nbsp;like&nbsp;user@host&nbsp;for&nbsp;logging&nbsp;and&nbsp;diagnostics.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                034&nbsp;&nbsp;&nbsp;&nbsp;[{:keys&nbsp;[ssh-user&nbsp;ip]}]
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                035&nbsp;&nbsp;&nbsp;&nbsp;(str&nbsp;ssh-user&nbsp;&quot;@&quot;&nbsp;ip))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                036&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                037&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                038&nbsp;&nbsp;(defn-&nbsp;non-blank-string
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                039&nbsp;&nbsp;&nbsp;&nbsp;&quot;Returns&nbsp;a&nbsp;trimmed&nbsp;string&nbsp;when&nbsp;the&nbsp;input&nbsp;contains&nbsp;non-whitespace&nbsp;characters.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                040&nbsp;&nbsp;&nbsp;&nbsp;[value]
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                041&nbsp;&nbsp;&nbsp;&nbsp;(when&nbsp;(some?&nbsp;value)
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                042&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[trimmed&nbsp;(str&#x2F;trim&nbsp;value)]
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                043&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(when&nbsp;(not-empty&nbsp;trimmed)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                044&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;trimmed))))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                045&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                046&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                047&nbsp;&nbsp;(defn-&nbsp;private-key-path
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                048&nbsp;&nbsp;&nbsp;&nbsp;&quot;Normalizes&nbsp;and&nbsp;validates&nbsp;a&nbsp;private&nbsp;key&nbsp;path,&nbsp;returning&nbsp;it&nbsp;only&nbsp;when&nbsp;readable.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                049&nbsp;&nbsp;&nbsp;&nbsp;[secret]
+                </span><br/>
+<span class="covered" title="9 out of 9 forms covered">
+                050&nbsp;&nbsp;&nbsp;&nbsp;(when-let&nbsp;[candidate&nbsp;(non-blank-string&nbsp;secret)]
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                051&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[file&nbsp;(io&#x2F;file&nbsp;candidate)]
+                </span><br/>
+<span class="covered" title="8 out of 8 forms covered">
+                052&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(when&nbsp;(and&nbsp;(.exists&nbsp;file)
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                053&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.canRead&nbsp;file))
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                054&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;candidate))))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                055&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                056&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                057&nbsp;&nbsp;(defn-&nbsp;shell-quote
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                058&nbsp;&nbsp;&nbsp;&nbsp;&quot;Safely&nbsp;single-quotes&nbsp;a&nbsp;string&nbsp;for&nbsp;inclusion&nbsp;in&nbsp;a&nbsp;shell&nbsp;command.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                059&nbsp;&nbsp;&nbsp;&nbsp;[s]
+                </span><br/>
+<span class="covered" title="11 out of 11 forms covered">
+                060&nbsp;&nbsp;&nbsp;&nbsp;(str&nbsp;&quot;&#x27;&quot;&nbsp;(str&#x2F;replace&nbsp;(str&nbsp;s)&nbsp;&quot;&#x27;&quot;&nbsp;&quot;&#x27;\\&#x27;&#x27;&quot;)&nbsp;&quot;&#x27;&quot;))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                061&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                062&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                063&nbsp;&nbsp;(defn-&nbsp;stream-&gt;string
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                064&nbsp;&nbsp;&nbsp;&nbsp;&quot;Reads&nbsp;an&nbsp;input&nbsp;stream&nbsp;fully&nbsp;into&nbsp;a&nbsp;UTF-8&nbsp;string.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                065&nbsp;&nbsp;&nbsp;&nbsp;[^InputStream&nbsp;stream]
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                066&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[buffer&nbsp;(byte-array&nbsp;4096)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                067&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output&nbsp;(ByteArrayOutputStream.)]
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                068&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(loop&nbsp;[]
+                </span><br/>
+<span class="covered" title="6 out of 6 forms covered">
+                069&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[read-count&nbsp;(.read&nbsp;stream&nbsp;buffer&nbsp;0&nbsp;(alength&nbsp;buffer))]
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                070&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(when&nbsp;(pos?&nbsp;read-count)
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                071&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.write&nbsp;output&nbsp;buffer&nbsp;0&nbsp;read-count)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                072&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(recur))))
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                073&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.toString&nbsp;output&nbsp;&quot;UTF-8&quot;)))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                074&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                075&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                076&nbsp;&nbsp;(defn&nbsp;connection-options
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                077&nbsp;&nbsp;&nbsp;&nbsp;&quot;Builds&nbsp;normalized&nbsp;SSH&nbsp;connection&nbsp;options&nbsp;for&nbsp;a&nbsp;machine&nbsp;map.
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                078&nbsp;&nbsp;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                079&nbsp;&nbsp;&nbsp;&nbsp;Supported&nbsp;auth&nbsp;types&nbsp;are:
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                080&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;\&quot;password\&quot;&nbsp;with&nbsp;:auth-secret&nbsp;as&nbsp;the&nbsp;password
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                081&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;\&quot;private-key\&quot;&nbsp;with&nbsp;:auth-secret&nbsp;as&nbsp;a&nbsp;readable&nbsp;private&nbsp;key&nbsp;path&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                082&nbsp;&nbsp;&nbsp;&nbsp;[machine]
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                083&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[{:keys&nbsp;[ssh-user&nbsp;ip&nbsp;auth-type&nbsp;auth-secret]}&nbsp;machine]
+                </span><br/>
+<span class="covered" title="29 out of 29 forms covered">
+                084&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;debug&nbsp;&quot;Building&nbsp;SSH&nbsp;connection&nbsp;options&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user&nbsp;:auth-type])})
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                085&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(cond
+                </span><br/>
+<span class="covered" title="10 out of 10 forms covered">
+                086&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(or&nbsp;(str&#x2F;blank?&nbsp;ssh-user)&nbsp;(str&#x2F;blank?&nbsp;ip))
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                087&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(do
+                </span><br/>
+<span class="covered" title="22 out of 22 forms covered">
+                088&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;warn&nbsp;&quot;Missing&nbsp;ssh-user&nbsp;or&nbsp;ip&nbsp;for&nbsp;machine&quot;&nbsp;{:machine&nbsp;machine})
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                089&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:error&nbsp;&quot;Missing&nbsp;ssh-user&nbsp;or&nbsp;ip&nbsp;for&nbsp;machine.&quot;})
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                090&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                091&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(=&nbsp;&quot;password&quot;&nbsp;auth-type)
+                </span><br/>
+<span class="covered" title="8 out of 8 forms covered">
+                092&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(if-let&nbsp;[password&nbsp;(non-blank-string&nbsp;auth-secret)]
+                </span><br/>
+<span class="covered" title="6 out of 6 forms covered">
+                093&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:machine&nbsp;(build-machine-id&nbsp;machine)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                094&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:password&nbsp;password}
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                095&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(do
+                </span><br/>
+<span class="covered" title="29 out of 29 forms covered">
+                096&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;warn&nbsp;&quot;Missing&nbsp;auth-secret&nbsp;for&nbsp;password&nbsp;authentication&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user&nbsp;:auth-type])})
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                097&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:error&nbsp;&quot;Missing&nbsp;auth-secret&nbsp;for&nbsp;password&nbsp;authentication.&quot;}))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                098&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                099&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(=&nbsp;&quot;private-key&quot;&nbsp;auth-type)
+                </span><br/>
+<span class="covered" title="8 out of 8 forms covered">
+                100&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(if-let&nbsp;[identity-file&nbsp;(private-key-path&nbsp;auth-secret)]
+                </span><br/>
+<span class="covered" title="6 out of 6 forms covered">
+                101&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:machine&nbsp;(build-machine-id&nbsp;machine)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                102&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:identity-file&nbsp;identity-file}
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                103&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(do
+                </span><br/>
+<span class="covered" title="30 out of 30 forms covered">
+                104&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;warn&nbsp;&quot;Unreadable&nbsp;private&nbsp;key&nbsp;path&nbsp;for&nbsp;machine&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user&nbsp;:auth-type])
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                105&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:auth-secret&nbsp;auth-secret})
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                106&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:error&nbsp;&quot;Private&nbsp;key&nbsp;auth&nbsp;expects&nbsp;auth-secret&nbsp;to&nbsp;be&nbsp;a&nbsp;readable&nbsp;file&nbsp;path&nbsp;on&nbsp;the&nbsp;backend&nbsp;host.&quot;}))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                107&nbsp;&nbsp;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                108&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:else
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                109&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(do
+                </span><br/>
+<span class="covered" title="29 out of 29 forms covered">
+                110&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;warn&nbsp;&quot;Unsupported&nbsp;auth-type&nbsp;for&nbsp;machine&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user])
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                111&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:auth-type&nbsp;auth-type})
+                </span><br/>
+<span class="covered" title="6 out of 6 forms covered">
+                112&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:error&nbsp;(str&nbsp;&quot;Unsupported&nbsp;auth-type:&nbsp;&quot;&nbsp;auth-type)}))))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                113&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                114&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                115&nbsp;&nbsp;(defn-&nbsp;build-session
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                116&nbsp;&nbsp;&nbsp;&nbsp;&quot;Creates&nbsp;and&nbsp;configures&nbsp;a&nbsp;JSch&nbsp;SSH&nbsp;session&nbsp;for&nbsp;the&nbsp;given&nbsp;machine.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                117&nbsp;&nbsp;&nbsp;&nbsp;[{:keys&nbsp;[ssh-user&nbsp;ip&nbsp;auth-type&nbsp;auth-secret]}]
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                118&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[password&nbsp;(non-blank-string&nbsp;auth-secret)
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                119&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;identity-file&nbsp;(private-key-path&nbsp;auth-secret)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                120&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;jsch&nbsp;(JSch.)
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                121&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;session&nbsp;^Session&nbsp;(if&nbsp;(=&nbsp;&quot;private-key&quot;&nbsp;auth-type)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                122&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(do
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                123&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.addIdentity&nbsp;jsch&nbsp;identity-file)
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                124&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.getSession&nbsp;jsch&nbsp;ssh-user&nbsp;ip&nbsp;22))
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                125&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.getSession&nbsp;jsch&nbsp;ssh-user&nbsp;ip&nbsp;22))]
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                126&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(when&nbsp;(=&nbsp;&quot;password&quot;&nbsp;auth-type)
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                127&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.setPassword&nbsp;session&nbsp;password))
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                128&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.setConfig&nbsp;session&nbsp;&quot;StrictHostKeyChecking&quot;&nbsp;&quot;no&quot;)
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                129&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.setConfig&nbsp;session&nbsp;&quot;PreferredAuthentications&quot;&nbsp;&quot;publickey,password,keyboard-interactive&quot;)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                130&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;session))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                131&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                132&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                133&nbsp;&nbsp;(defn&nbsp;exec-remote-command
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                134&nbsp;&nbsp;&nbsp;&nbsp;&quot;Executes&nbsp;a&nbsp;shell&nbsp;command&nbsp;on&nbsp;a&nbsp;remote&nbsp;machine&nbsp;over&nbsp;SSH.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                135&nbsp;&nbsp;&nbsp;&nbsp;[machine&nbsp;cmd]
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                136&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[session&nbsp;(build-session&nbsp;machine)]
+                </span><br/>
+<span class="covered" title="30 out of 30 forms covered">
+                137&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;debug&nbsp;&quot;Executing&nbsp;remote&nbsp;SSH&nbsp;command&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user&nbsp;:auth-type])
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                138&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:command&nbsp;cmd})
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                139&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(try
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                140&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.connect&nbsp;session&nbsp;ssh-connect-timeout-ms)
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                141&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[channel&nbsp;^ChannelExec&nbsp;(.openChannel&nbsp;session&nbsp;&quot;exec&quot;)]
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                142&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(try
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                143&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.setInputStream&nbsp;channel&nbsp;nil)
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                144&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.setCommand&nbsp;channel&nbsp;(str&nbsp;&quot;bash&nbsp;-lc&nbsp;&quot;&nbsp;(shell-quote&nbsp;cmd)))
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                145&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[stdout-stream&nbsp;(.getInputStream&nbsp;channel)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                146&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stderr-stream&nbsp;(.getExtInputStream&nbsp;channel)
+                </span><br/>
+<span class="covered" title="6 out of 6 forms covered">
+                147&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stdout-future&nbsp;(future&nbsp;(stream-&gt;string&nbsp;stdout-stream))
+                </span><br/>
+<span class="covered" title="6 out of 6 forms covered">
+                148&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stderr-future&nbsp;(future&nbsp;(stream-&gt;string&nbsp;stderr-stream))]
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                149&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.connect&nbsp;channel&nbsp;ssh-connect-timeout-ms)
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                150&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(while&nbsp;(not&nbsp;(.isClosed&nbsp;channel))
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                151&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Thread&#x2F;sleep&nbsp;25))
+                </span><br/>
+<span class="covered" title="10 out of 10 forms covered">
+                152&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[result&nbsp;{:exit&nbsp;(.getExitStatus&nbsp;channel)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                153&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:out&nbsp;@stdout-future
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                154&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:err&nbsp;@stderr-future}]
+                </span><br/>
+<span class="covered" title="31 out of 31 forms covered">
+                155&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;debug&nbsp;&quot;Completed&nbsp;remote&nbsp;SSH&nbsp;command&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user&nbsp;:auth-type])
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                156&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:command&nbsp;cmd
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                157&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:exit&nbsp;(:exit&nbsp;result)})
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                158&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;result))
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                159&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(finally
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                160&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.disconnect&nbsp;channel))))
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                161&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(finally
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                162&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(.disconnect&nbsp;session)))))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                163&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                164&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                165&nbsp;&nbsp;(defn&nbsp;exec-machine
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                166&nbsp;&nbsp;&nbsp;&nbsp;&quot;Executes&nbsp;a&nbsp;shell&nbsp;command&nbsp;locally&nbsp;for&nbsp;localhost&nbsp;targets,&nbsp;otherwise&nbsp;over&nbsp;SSH.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                167&nbsp;&nbsp;&nbsp;&nbsp;[machine&nbsp;cmd]
+                </span><br/>
+<span class="covered" title="9 out of 9 forms covered">
+                168&nbsp;&nbsp;&nbsp;&nbsp;(if&nbsp;(and&nbsp;(localhost-machine?&nbsp;machine)
+                </span><br/>
+<span class="covered" title="22 out of 22 forms covered">
+                169&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[configured-user&nbsp;(some-&gt;&nbsp;(:ssh-user&nbsp;machine)&nbsp;str&#x2F;trim&nbsp;not-empty)]
+                </span><br/>
+<span class="covered" title="9 out of 9 forms covered">
+                170&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(or&nbsp;(nil?&nbsp;configured-user)
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                171&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(=&nbsp;configured-user&nbsp;(current-os-user)))))
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                172&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(do
+                </span><br/>
+<span class="covered" title="29 out of 29 forms covered">
+                173&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;debug&nbsp;&quot;Executing&nbsp;local&nbsp;shell&nbsp;command&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user])
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                174&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:command&nbsp;cmd})
+                </span><br/>
+<span class="covered" title="6 out of 6 forms covered">
+                175&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[result&nbsp;(shell&#x2F;sh&nbsp;&quot;bash&quot;&nbsp;&quot;-lc&quot;&nbsp;cmd)]
+                </span><br/>
+<span class="covered" title="30 out of 30 forms covered">
+                176&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;debug&nbsp;&quot;Completed&nbsp;local&nbsp;shell&nbsp;command&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user])
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                177&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:command&nbsp;cmd
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                178&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:exit&nbsp;(:exit&nbsp;result)})
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                179&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;result))
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                180&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[options&nbsp;(connection-options&nbsp;machine)]
+                </span><br/>
+<span class="covered" title="8 out of 8 forms covered">
+                181&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(if-let&nbsp;[error&nbsp;(:error&nbsp;options)]
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                182&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(do
+                </span><br/>
+<span class="covered" title="31 out of 31 forms covered">
+                183&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;warn&nbsp;&quot;Skipping&nbsp;command&nbsp;because&nbsp;connection&nbsp;options&nbsp;could&nbsp;not&nbsp;be&nbsp;built&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user&nbsp;:auth-type])
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                184&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:command&nbsp;cmd
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                185&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:error&nbsp;error})
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                186&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:exit&nbsp;64&nbsp;:out&nbsp;&quot;&quot;&nbsp;:err&nbsp;error})
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                187&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(try
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                188&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(exec-remote-command&nbsp;machine&nbsp;cmd)
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                189&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(catch&nbsp;Exception&nbsp;ex
+                </span><br/>
+<span class="covered" title="31 out of 31 forms covered">
+                190&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;error&nbsp;ex&nbsp;&quot;SSH&nbsp;command&nbsp;execution&nbsp;failed&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user&nbsp;:auth-type])
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                191&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:command&nbsp;cmd})
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                192&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:exit&nbsp;255&nbsp;:out&nbsp;&quot;&quot;&nbsp;:err&nbsp;(.getMessage&nbsp;ex)}))))))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                193&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                194&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                195&nbsp;&nbsp;(defn-&nbsp;passwordless-group-key
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                196&nbsp;&nbsp;&nbsp;&nbsp;&quot;Builds&nbsp;the&nbsp;grouping&nbsp;key&nbsp;used&nbsp;to&nbsp;cluster&nbsp;machines&nbsp;by&nbsp;compatible&nbsp;SSH&nbsp;auth&nbsp;details.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                197&nbsp;&nbsp;&nbsp;&nbsp;[{:keys&nbsp;[ssh-user&nbsp;auth-type&nbsp;auth-secret]}]
+                </span><br/>
+<span class="covered" title="23 out of 23 forms covered">
+                198&nbsp;&nbsp;&nbsp;&nbsp;[ssh-user&nbsp;auth-type&nbsp;(some-&gt;&nbsp;auth-secret&nbsp;str&#x2F;trim&nbsp;not-empty)])
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                199&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                200&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                201&nbsp;&nbsp;(defn-&nbsp;machine-sort-key
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                202&nbsp;&nbsp;&nbsp;&nbsp;&quot;Builds&nbsp;a&nbsp;stable&nbsp;sort&nbsp;key&nbsp;for&nbsp;machine&nbsp;ordering,&nbsp;preferring&nbsp;explicit&nbsp;ids&nbsp;when&nbsp;present.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                203&nbsp;&nbsp;&nbsp;&nbsp;[machine]
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                204&nbsp;&nbsp;&nbsp;&nbsp;[(boolean&nbsp;(:id&nbsp;machine))
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                205&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(:id&nbsp;machine)
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                206&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(:ip&nbsp;machine)
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                207&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(:hostname&nbsp;machine)
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                208&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(:ssh-user&nbsp;machine)
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                209&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(:auth-type&nbsp;machine)])
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                210&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                211&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                212&nbsp;&nbsp;(defn-&nbsp;ensure-ssh-keypair!
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                213&nbsp;&nbsp;&nbsp;&nbsp;&quot;Ensures&nbsp;that&nbsp;the&nbsp;target&nbsp;machine&nbsp;has&nbsp;an&nbsp;RSA&nbsp;SSH&nbsp;keypair&nbsp;ready&nbsp;for&nbsp;mesh&nbsp;setup.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                214&nbsp;&nbsp;&nbsp;&nbsp;[machine]
+                </span><br/>
+<span class="covered" title="28 out of 28 forms covered">
+                215&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;info&nbsp;&quot;Ensuring&nbsp;SSH&nbsp;keypair&nbsp;exists&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user])})
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                216&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[result&nbsp;(exec-machine&nbsp;machine
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                217&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(str&nbsp;&quot;mkdir&nbsp;-p&nbsp;~&#x2F;.ssh&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                218&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;chmod&nbsp;700&nbsp;~&#x2F;.ssh&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                219&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;if&nbsp;[&nbsp;!&nbsp;-f&nbsp;~&#x2F;.ssh&#x2F;id_rsa&nbsp;];&nbsp;then&nbsp;ssh-keygen&nbsp;-t&nbsp;rsa&nbsp;-b&nbsp;4096&nbsp;-N&nbsp;&#x27;&#x27;&nbsp;-f&nbsp;~&#x2F;.ssh&#x2F;id_rsa&nbsp;&gt;&#x2F;dev&#x2F;null&nbsp;2&gt;&amp;1;&nbsp;fi&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                220&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;chmod&nbsp;600&nbsp;~&#x2F;.ssh&#x2F;id_rsa&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                221&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;chmod&nbsp;644&nbsp;~&#x2F;.ssh&#x2F;id_rsa.pub&quot;))]
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                222&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(when-not&nbsp;(zero?&nbsp;(:exit&nbsp;result))
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                223&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(throw&nbsp;(ex-info&nbsp;&quot;Unable&nbsp;to&nbsp;create&#x2F;read&nbsp;SSH&nbsp;keypair&nbsp;on&nbsp;machine.&quot;
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                224&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:machine&nbsp;machine&nbsp;:result&nbsp;result})))))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                225&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                226&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                227&nbsp;&nbsp;(defn-&nbsp;known-host-identifiers
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                228&nbsp;&nbsp;&nbsp;&nbsp;&quot;Returns&nbsp;the&nbsp;distinct&nbsp;hostname&#x2F;IP&nbsp;values&nbsp;that&nbsp;should&nbsp;be&nbsp;added&nbsp;to&nbsp;known_hosts.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                229&nbsp;&nbsp;&nbsp;&nbsp;[{:keys&nbsp;[hostname&nbsp;ip]}]
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                230&nbsp;&nbsp;&nbsp;&nbsp;(-&gt;&gt;&nbsp;[hostname&nbsp;ip]
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                231&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(remove&nbsp;str&#x2F;blank?)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                232&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;distinct))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                233&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                234&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                235&nbsp;&nbsp;(defn-&nbsp;known-host-authorization-command
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                236&nbsp;&nbsp;&nbsp;&nbsp;&quot;Builds&nbsp;the&nbsp;shell&nbsp;command&nbsp;that&nbsp;adds&nbsp;a&nbsp;host&nbsp;entry&nbsp;to&nbsp;~&#x2F;.ssh&#x2F;known_hosts&nbsp;when&nbsp;needed.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                237&nbsp;&nbsp;&nbsp;&nbsp;[host]
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                238&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[quoted-host&nbsp;(shell-quote&nbsp;host)]
+                </span><br/>
+<span class="covered" title="10 out of 10 forms covered">
+                239&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(format&nbsp;(str&nbsp;&quot;mkdir&nbsp;-p&nbsp;~&#x2F;.ssh&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                240&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;chmod&nbsp;700&nbsp;~&#x2F;.ssh&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                241&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;touch&nbsp;~&#x2F;.ssh&#x2F;known_hosts&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                242&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;chmod&nbsp;600&nbsp;~&#x2F;.ssh&#x2F;known_hosts&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                243&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;(ssh-keygen&nbsp;-F&nbsp;%s&nbsp;-f&nbsp;~&#x2F;.ssh&#x2F;known_hosts&nbsp;&gt;&#x2F;dev&#x2F;null&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                244&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;||&nbsp;ssh-keyscan&nbsp;-H&nbsp;%s&nbsp;&gt;&gt;&nbsp;~&#x2F;.ssh&#x2F;known_hosts&nbsp;2&gt;&#x2F;dev&#x2F;null)&quot;)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                245&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;quoted-host
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                246&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;quoted-host)))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                247&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                248&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                249&nbsp;&nbsp;(defn-&nbsp;ensure-command-succeeded!
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                250&nbsp;&nbsp;&nbsp;&nbsp;&quot;Throws&nbsp;an&nbsp;ex-info&nbsp;when&nbsp;a&nbsp;machine&nbsp;command&nbsp;exits&nbsp;with&nbsp;a&nbsp;non-zero&nbsp;status.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                251&nbsp;&nbsp;&nbsp;&nbsp;[message&nbsp;machine&nbsp;context&nbsp;result]
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                252&nbsp;&nbsp;&nbsp;&nbsp;(when-not&nbsp;(zero?&nbsp;(:exit&nbsp;result))
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                253&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(throw&nbsp;(ex-info&nbsp;message
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                254&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(assoc&nbsp;context
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                255&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:machine&nbsp;machine
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                256&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:result&nbsp;result)))))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                257&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                258&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                259&nbsp;&nbsp;(defn-&nbsp;authorize-known-host!
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                260&nbsp;&nbsp;&nbsp;&nbsp;&quot;Adds&nbsp;the&nbsp;target&nbsp;machine&#x27;s&nbsp;hostname&#x2F;IP&nbsp;SSH&nbsp;host&nbsp;keys&nbsp;to&nbsp;the&nbsp;source&nbsp;machine&#x27;s&nbsp;known_hosts.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                261&nbsp;&nbsp;&nbsp;&nbsp;[source-machine&nbsp;target-machine]
+                </span><br/>
+<span class="covered" title="29 out of 29 forms covered">
+                262&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;debug&nbsp;&quot;Authorizing&nbsp;known&nbsp;host&nbsp;entries&quot;&nbsp;{:source&nbsp;(select-keys&nbsp;source-machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user])
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                263&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:target&nbsp;(select-keys&nbsp;target-machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user])})
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                264&nbsp;&nbsp;&nbsp;&nbsp;(run!&nbsp;(fn&nbsp;[host]
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                265&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[result&nbsp;(exec-machine&nbsp;source-machine
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                266&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(known-host-authorization-command&nbsp;host))]
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                267&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(ensure-command-succeeded!&nbsp;&quot;Unable&nbsp;to&nbsp;authorize&nbsp;SSH&nbsp;known&nbsp;host&nbsp;on&nbsp;machine.&quot;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                268&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;source-machine
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                269&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:target&nbsp;target-machine}
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                270&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;result)))
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                271&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(known-host-identifiers&nbsp;target-machine)))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                272&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                273&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                274&nbsp;&nbsp;(defn-&nbsp;read-public-key!
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                275&nbsp;&nbsp;&nbsp;&nbsp;&quot;Reads&nbsp;and&nbsp;returns&nbsp;the&nbsp;public&nbsp;key&nbsp;from&nbsp;the&nbsp;target&nbsp;machine&#x27;s&nbsp;default&nbsp;SSH&nbsp;keypair.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                276&nbsp;&nbsp;&nbsp;&nbsp;[machine]
+                </span><br/>
+<span class="covered" title="28 out of 28 forms covered">
+                277&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;debug&nbsp;&quot;Reading&nbsp;public&nbsp;key&nbsp;from&nbsp;machine&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user])})
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                278&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[result&nbsp;(exec-machine&nbsp;machine&nbsp;&quot;cat&nbsp;~&#x2F;.ssh&#x2F;id_rsa.pub&quot;)
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                279&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;public-key&nbsp;(non-blank-string&nbsp;(:out&nbsp;result))]
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                280&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(when-not&nbsp;(zero?&nbsp;(:exit&nbsp;result))
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                281&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(throw&nbsp;(ex-info&nbsp;&quot;Unable&nbsp;to&nbsp;read&nbsp;machine&nbsp;public&nbsp;key.&quot;
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                282&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:machine&nbsp;machine&nbsp;:result&nbsp;result})))
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                283&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(when-not&nbsp;public-key
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                284&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(throw&nbsp;(ex-info&nbsp;&quot;Machine&nbsp;public&nbsp;key&nbsp;is&nbsp;empty.&quot;
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                285&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:machine&nbsp;machine&nbsp;:result&nbsp;result})))
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                286&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;public-key))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                287&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                288&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                289&nbsp;&nbsp;(defn-&nbsp;authorize-public-key!
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                290&nbsp;&nbsp;&nbsp;&nbsp;&quot;Appends&nbsp;a&nbsp;public&nbsp;key&nbsp;to&nbsp;the&nbsp;target&nbsp;machine&#x27;s&nbsp;authorized_keys&nbsp;when&nbsp;it&nbsp;is&nbsp;not&nbsp;already&nbsp;present.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                291&nbsp;&nbsp;&nbsp;&nbsp;[machine&nbsp;public-key]
+                </span><br/>
+<span class="covered" title="28 out of 28 forms covered">
+                292&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;debug&nbsp;&quot;Authorizing&nbsp;public&nbsp;key&nbsp;on&nbsp;machine&quot;&nbsp;{:machine&nbsp;(select-keys&nbsp;machine&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user])})
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                293&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[quoted-key&nbsp;(shell-quote&nbsp;public-key)
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                294&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;(exec-machine&nbsp;machine
+                </span><br/>
+<span class="covered" title="10 out of 10 forms covered">
+                295&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(str&nbsp;&quot;mkdir&nbsp;-p&nbsp;~&#x2F;.ssh&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                296&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;chmod&nbsp;700&nbsp;~&#x2F;.ssh&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                297&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;touch&nbsp;~&#x2F;.ssh&#x2F;authorized_keys&nbsp;&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                298&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;chmod&nbsp;600&nbsp;~&#x2F;.ssh&#x2F;authorized_keys&nbsp;&quot;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                299&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;&amp;&amp;&nbsp;(grep&nbsp;-qxF&nbsp;&quot;&nbsp;quoted-key&nbsp;&quot;&nbsp;~&#x2F;.ssh&#x2F;authorized_keys&nbsp;&quot;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                300&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;||&nbsp;echo&nbsp;&quot;&nbsp;quoted-key&nbsp;&quot;&nbsp;&gt;&gt;&nbsp;~&#x2F;.ssh&#x2F;authorized_keys)&quot;))]
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                301&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(when-not&nbsp;(zero?&nbsp;(:exit&nbsp;result))
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                302&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(throw&nbsp;(ex-info&nbsp;&quot;Unable&nbsp;to&nbsp;authorize&nbsp;SSH&nbsp;key&nbsp;on&nbsp;machine.&quot;
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                303&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:machine&nbsp;machine&nbsp;:result&nbsp;result})))))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                304&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                305&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                306&nbsp;&nbsp;(defn&nbsp;setup-passwordless-group-via-ssh!
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                307&nbsp;&nbsp;&nbsp;&nbsp;&quot;Bootstraps&nbsp;passwordless&nbsp;SSH&nbsp;for&nbsp;one&nbsp;already-compatible&nbsp;group&nbsp;of&nbsp;machines.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                308&nbsp;&nbsp;&nbsp;&nbsp;[machines]
+                </span><br/>
+<span class="covered" title="24 out of 24 forms covered">
+                309&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;info&nbsp;&quot;Bootstrapping&nbsp;passwordless&nbsp;SSH&nbsp;for&nbsp;compatible&nbsp;group&quot;&nbsp;{:machine-count&nbsp;(count&nbsp;machines)
+                </span><br/>
+<span class="covered" title="12 out of 12 forms covered">
+                310&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:machines&nbsp;(mapv&nbsp;#(select-keys&nbsp;%&nbsp;[:hostname&nbsp;:ip&nbsp;:ssh-user&nbsp;:auth-type])&nbsp;machines)})
+                </span><br/>
+<span class="covered" title="5 out of 5 forms covered">
+                311&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[machine-keys&nbsp;(mapv&nbsp;(fn&nbsp;[machine]
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                312&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(ensure-ssh-keypair!&nbsp;machine)
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                313&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:machine&nbsp;machine
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                314&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:public-key&nbsp;(read-public-key!&nbsp;machine)})
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                315&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;machines)]
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                316&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(run!&nbsp;(fn&nbsp;[source-machine]
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                317&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(run!&nbsp;(fn&nbsp;[target-machine]
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                318&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(authorize-known-host!&nbsp;source-machine&nbsp;target-machine))
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                319&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;machines))
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                320&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;machines)
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                321&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(run!&nbsp;(fn&nbsp;[target-machine]
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                322&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(run!&nbsp;(fn&nbsp;[{:keys&nbsp;[public-key]}]
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                323&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(authorize-public-key!&nbsp;target-machine&nbsp;public-key))
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                324&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;machine-keys))
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                325&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;machines)
+                </span><br/>
+<span class="covered" title="23 out of 23 forms covered">
+                326&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;info&nbsp;&quot;Finished&nbsp;passwordless&nbsp;SSH&nbsp;group&nbsp;bootstrap&quot;&nbsp;{:machine-count&nbsp;(count&nbsp;machines)})
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                327&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:ok))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                328&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                329&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                330&nbsp;&nbsp;(defn-&nbsp;setup-passwordless-group!
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                331&nbsp;&nbsp;&nbsp;&nbsp;&quot;Validates&nbsp;and&nbsp;applies&nbsp;passwordless&nbsp;SSH&nbsp;setup&nbsp;for&nbsp;one&nbsp;grouped&nbsp;set&nbsp;of&nbsp;compatible&nbsp;machines.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                332&nbsp;&nbsp;&nbsp;&nbsp;[machines]
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                333&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[{:keys&nbsp;[ssh-user&nbsp;auth-type]}&nbsp;(first&nbsp;machines)
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                334&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ips&nbsp;(mapv&nbsp;:ip&nbsp;machines)]
+                </span><br/>
+<span class="covered" title="24 out of 24 forms covered">
+                335&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;info&nbsp;&quot;Evaluating&nbsp;passwordless&nbsp;SSH&nbsp;group&quot;&nbsp;{:ssh-user&nbsp;ssh-user
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                336&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:auth-type&nbsp;auth-type
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                337&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:machine-ips&nbsp;ips})
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                338&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(cond
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                339&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(&lt;&nbsp;(count&nbsp;machines)&nbsp;2)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                340&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(do
+                </span><br/>
+<span class="covered" title="22 out of 22 forms covered">
+                341&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;info&nbsp;&quot;Skipping&nbsp;passwordless&nbsp;SSH&nbsp;group&nbsp;with&nbsp;fewer&nbsp;than&nbsp;two&nbsp;machines&quot;&nbsp;{:machine-ips&nbsp;ips})
+                </span><br/>
+<span class="covered" title="10 out of 10 forms covered">
+                342&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:applied&nbsp;false
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                343&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:skipped&nbsp;true
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                344&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:ssh-user&nbsp;ssh-user
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                345&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:auth-type&nbsp;auth-type
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                346&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:machine-ips&nbsp;ips
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                347&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:reason&nbsp;&quot;Need&nbsp;at&nbsp;least&nbsp;two&nbsp;machines&nbsp;with&nbsp;matching&nbsp;credentials&nbsp;to&nbsp;configure&nbsp;passwordless&nbsp;SSH&nbsp;mesh.&quot;})
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                348&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="10 out of 10 forms covered">
+                349&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(and&nbsp;(=&nbsp;&quot;password&quot;&nbsp;auth-type)
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                350&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(nil?&nbsp;(non-blank-string&nbsp;(:auth-secret&nbsp;(first&nbsp;machines)))))
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                351&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(do
+                </span><br/>
+<span class="covered" title="22 out of 22 forms covered">
+                352&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;info&nbsp;&quot;Skipping&nbsp;passwordless&nbsp;SSH&nbsp;password-auth&nbsp;group&nbsp;without&nbsp;a&nbsp;password&quot;&nbsp;{:machine-ips&nbsp;ips})
+                </span><br/>
+<span class="covered" title="10 out of 10 forms covered">
+                353&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:applied&nbsp;false
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                354&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:skipped&nbsp;true
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                355&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:ssh-user&nbsp;ssh-user
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                356&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:auth-type&nbsp;auth-type
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                357&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:machine-ips&nbsp;ips
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                358&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:reason&nbsp;&quot;Password&nbsp;auth&nbsp;requires&nbsp;auth-secret&nbsp;to&nbsp;be&nbsp;set&nbsp;for&nbsp;passwordless&nbsp;SSH&nbsp;setup.&quot;})
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                359&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="10 out of 10 forms covered">
+                360&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(and&nbsp;(=&nbsp;&quot;private-key&quot;&nbsp;auth-type)
+                </span><br/>
+<span class="covered" title="7 out of 7 forms covered">
+                361&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(nil?&nbsp;(private-key-path&nbsp;(:auth-secret&nbsp;(first&nbsp;machines)))))
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                362&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(do
+                </span><br/>
+<span class="covered" title="22 out of 22 forms covered">
+                363&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;info&nbsp;&quot;Skipping&nbsp;passwordless&nbsp;SSH&nbsp;private-key&nbsp;group&nbsp;with&nbsp;unreadable&nbsp;key&quot;&nbsp;{:machine-ips&nbsp;ips})
+                </span><br/>
+<span class="covered" title="10 out of 10 forms covered">
+                364&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:applied&nbsp;false
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                365&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:skipped&nbsp;true
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                366&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:ssh-user&nbsp;ssh-user
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                367&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:auth-type&nbsp;auth-type
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                368&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:machine-ips&nbsp;ips
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                369&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:reason&nbsp;&quot;Private&nbsp;key&nbsp;auth&nbsp;requires&nbsp;auth-secret&nbsp;to&nbsp;point&nbsp;to&nbsp;a&nbsp;readable&nbsp;private&nbsp;key&nbsp;file.&quot;})
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                370&nbsp;&nbsp;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                371&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:else
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                372&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(try
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                373&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(setup-passwordless-group-via-ssh!&nbsp;machines)
+                </span><br/>
+<span class="covered" title="22 out of 22 forms covered">
+                374&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;info&nbsp;&quot;Applied&nbsp;passwordless&nbsp;SSH&nbsp;group&quot;&nbsp;{:machine-ips&nbsp;ips})
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                375&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:applied&nbsp;true
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                376&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:skipped&nbsp;false
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                377&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:ssh-user&nbsp;ssh-user
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                378&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:auth-type&nbsp;auth-type
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                379&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:machine-ips&nbsp;ips}
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                380&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(catch&nbsp;Exception&nbsp;ex
+                </span><br/>
+<span class="covered" title="25 out of 25 forms covered">
+                381&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;error&nbsp;ex&nbsp;&quot;Passwordless&nbsp;SSH&nbsp;group&nbsp;bootstrap&nbsp;failed&quot;&nbsp;{:machine-ips&nbsp;ips
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                382&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:ssh-user&nbsp;ssh-user
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                383&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:auth-type&nbsp;auth-type})
+                </span><br/>
+<span class="covered" title="9 out of 9 forms covered">
+                384&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{:applied&nbsp;false
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                385&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:skipped&nbsp;false
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                386&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:ssh-user&nbsp;ssh-user
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                387&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:auth-type&nbsp;auth-type
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                388&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:machine-ips&nbsp;ips
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                389&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:error&nbsp;(.getMessage&nbsp;ex)})))))
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                390&nbsp;&nbsp;
+                </span><br/>
+<span class="blank" title="0 out of 0 forms covered">
+                391&nbsp;&nbsp;
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                392&nbsp;&nbsp;(defn&nbsp;setup-passwordless-mesh!
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                393&nbsp;&nbsp;&nbsp;&nbsp;&quot;Groups&nbsp;machines&nbsp;by&nbsp;compatible&nbsp;SSH&nbsp;authentication&nbsp;details&nbsp;and&nbsp;bootstraps
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                394&nbsp;&nbsp;&nbsp;&nbsp;passwordless&nbsp;SSH&nbsp;within&nbsp;each&nbsp;eligible&nbsp;group.&quot;
+                </span><br/>
+<span class="not-tracked" title="0 out of 0 forms covered">
+                395&nbsp;&nbsp;&nbsp;&nbsp;[machines]
+                </span><br/>
+<span class="covered" title="23 out of 23 forms covered">
+                396&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;info&nbsp;&quot;Starting&nbsp;passwordless&nbsp;SSH&nbsp;mesh&nbsp;bootstrap&quot;&nbsp;{:machine-count&nbsp;(count&nbsp;machines)})
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                397&nbsp;&nbsp;&nbsp;&nbsp;(let&nbsp;[remote-machines&nbsp;(-&gt;&gt;&nbsp;machines
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                398&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(remove&nbsp;localhost-machine?)
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                399&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(sort-by&nbsp;machine-sort-key))
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                400&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;grouped-machines&nbsp;(-&gt;&gt;&nbsp;remote-machines
+                </span><br/>
+<span class="covered" title="3 out of 3 forms covered">
+                401&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(group-by&nbsp;passwordless-group-key)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                402&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;vals)
+                </span><br/>
+<span class="covered" title="4 out of 4 forms covered">
+                403&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;results&nbsp;(mapv&nbsp;setup-passwordless-group!&nbsp;grouped-machines)
+                </span><br/>
+<span class="covered" title="6 out of 6 forms covered">
+                404&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;summary&nbsp;{:eligible-machines&nbsp;(count&nbsp;remote-machines)
+                </span><br/>
+<span class="covered" title="2 out of 2 forms covered">
+                405&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:groups&nbsp;(count&nbsp;grouped-machines)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                406&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:results&nbsp;results}]
+                </span><br/>
+<span class="covered" title="20 out of 20 forms covered">
+                407&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(log&#x2F;info&nbsp;&quot;Completed&nbsp;passwordless&nbsp;SSH&nbsp;mesh&nbsp;bootstrap&quot;&nbsp;summary)
+                </span><br/>
+<span class="covered" title="1 out of 1 forms covered">
+                408&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;summary))
+                </span><br/>
+ </body>
+</html>
